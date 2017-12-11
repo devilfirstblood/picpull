@@ -25,7 +25,7 @@ class Pixiv:
         }
         self.return_to = "http://www.pixiv.net/"
         self.pixiv_id = 'xxx',
-        self.password = 'xx'
+        self.password = 'xxx'
         self.postKey = []
         self.savedUrlList = []  # 存放存储过的图片的url
 
@@ -163,8 +163,8 @@ class Pixiv:
 
         path = "Pixiv/id"
         self.mkdir(path, self.tag)  # 调用mkdir函数创建文件夹
-        if os.path.exists(self.tag + '/saved_url.txt'):
-            f = open(self.tag + '/saved_url.txt')
+        if os.path.exists('saved_url.txt'):
+            f = open( 'saved_url.txt')
             for line in f:
                 self.savedUrlList.append(line.strip('\n') )
             f.close()

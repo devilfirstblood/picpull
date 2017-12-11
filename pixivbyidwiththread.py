@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+import threading
 
 import requests
 import re
@@ -7,6 +8,8 @@ import os
 import sys
 
 import time
+
+import threadpool as threadpool
 from bs4 import BeautifulSoup
 
 s = requests.Session()
@@ -54,7 +57,7 @@ class Pixiv:
                 time.sleep(30)
                 count = count + 1
 
-        # 输入文件夹名，创建文件夹
+                # 输入文件夹名，创建文件夹
 
     def mkdir(self, path, folderName):
         folderName = folderName.strip()
@@ -64,49 +67,50 @@ class Pixiv:
             print u'建了一个名字叫做' + folderName + u'的文件夹！'
             os.chdir(path + '/' + self.tag)  # 切换到目录
             self.rootPath = os.getcwd()
-            print self.rootPath
-            os.makedirs(os.path.join(self.rootPath, "1-50"))
-            os.makedirs(os.path.join(self.rootPath, "51-300"))
-            os.makedirs(os.path.join(self.rootPath, "301-1000"))
-            os.makedirs(os.path.join(self.rootPath, "1000+"))
-            print u'在' + folderName + u'文件夹下建立了 1-50 51-300 301-1000 1000+ 4个文件夹'
             return True
         else:
             print u'名字叫做' + folderName + u'的文件夹已经存在了！'
-            os.chdir(path+'/'+self.tag)  # 切换到目录
+            os.chdir(path + '/' + self.tag)  # 切换到目录
             self.rootPath = os.getcwd()
 
             # 下载指定url的图片
 
-    def getBigImg(self, sourceUrl, wholePageUrl, name):
+    def getBigImg(self, sourceUrl, wholePageUrl, nnnnn):
         header = {
             'Referer': wholePageUrl,
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.75 Safari/537.36'
         }
-        if sourceUrl in self.savedUrlList:
-            print '该图片已经存在，不用再次保存，跳过！'
-        else:
-            self.savedUrlList.append(sourceUrl)
-            suffixPattern = re.compile('.((\w){3})\Z')
-            suffix = re.search(suffixPattern, sourceUrl)  # 获取文件后缀，png或jpg
+        # if sourceUrl in self.savedUrlList:
+        #     print '该图片已经存在，不用再次保存，跳过！'
+        # else:
+        self.savedUrlList.append(sourceUrl)
+        a = sourceUrl.split('/')
+        name = a[a.__len__() - 1]
 
-            name = name.replace('Re:', '')
-            ppp = os.getcwd() + '/' + name.encode('utf-8') + '.' + suffix.group(1).encode('utf-8')
-            imgExist = os.path.exists(ppp)  # 如果存在重名的，则给name加1重新命名
-            print ppp
-            print suffix.group(1)
-            if (imgExist):
-                name = name + 're'
-                print u'存在重名图片，重新命名为: ' + name
+        ppp = os.getcwd() + '/' + name
+        imgExist = os.path.exists(ppp)  # 如果存在重名的，则给name加1重新命名
+        print ppp
+        if (imgExist):
+            name = 're' + name
+            print u'存在重名图片，重新命名为: ' + name
 
-            img = s.get(sourceUrl, headers=header)
-            f = open(name + '.' + suffix.group(1), 'wb')  # 写入多媒体文件要b这个参数
-            f.write(img.content)  # 多媒体文件要是用conctent！
-            f.close()
+        count = 0
+        while count < 5:
+            try:
+                print '=======count:%d=========url:%s' % (count, sourceUrl)
+                img = s.get(sourceUrl, headers=header)
+                f = open(name, 'wb')  # 写入多媒体文件要b这个参数
+                f.write(img.content)  # 多媒体文件要是用conctent！
+                f.close()
 
-            f = open('../saved_url.txt', 'a')
-            f.write(sourceUrl + '\n')
-            f.close()
+                # f = open('saved_url.txt', 'a')
+                # f.write(sourceUrl + '\n')
+                # f.close()
+                count = 5
+                break
+            except:
+                time.sleep(10)
+                count = count + 1
 
     def getImg(self, url):
 
@@ -154,61 +158,53 @@ class Pixiv:
                 print '--------------------------------------------------------------------------------------------------------'
 
     def start(self):
-        # self.tag = raw_input('Please input the tag: ').decode('utf-8')
-        # self.page = int(raw_input('Please input the page you want to start from: '))
+        self.tag = raw_input('Please input the tag: ').decode('utf-8')
+        self.end = int(raw_input('Please input the page you want to end: '))
         # self.resolution = int(raw_input('Please input the resolution, from 1 to 3, 1 is highest resolution: '))
-        self.tag = u'神裂火織'
-        self.resolution = 1
-        page_path = os.getcwd() + '/page.txt'
-        p = '1'
-        if os.path.exists(page_path):
-            f = open(page_path)
-            for line in f:
-                p = line
-            f.close()
-        self.page = int(p)
+        # self.tag = '4338012'
+        self.page = 1
 
-        path = "Pixiv/tag"
+        path = "Pixiv/thread/id"
         self.mkdir(path, self.tag)  # 调用mkdir函数创建文件夹
-        if os.path.exists('saved_url.txt'):
-            f = open('saved_url.txt')
-            for line in f:
-                self.savedUrlList.append(line.strip('\n') )
-            f.close()
+        # if os.path.exists('saved_url.txt'):
+        #     f = open( 'saved_url.txt')
+        #     for line in f:
+        #         self.savedUrlList.append(line.strip('\n') )
+        #     f.close()
 
 
         self.getPostKeyAndCookie()  # 获得此次会话的post_key和cookie
 
-        for pageNum in range(self.page, 100):
-            f = open(page_path,'wb')
-            pn = str(pageNum)
-            f.write(pn)
-            f.close()
-            url = "http://www.pixiv.net/search.php?word=%s&s_mode=s_tag_full&order=date_d&type=illust&p=%d" % (self.tag, pageNum)
-            pageHtml = self.getPageWithUrl(url)  # 获取该页html
-            pageSoup = BeautifulSoup(pageHtml, 'lxml')
-            imgItemsResult = pageSoup.find_all("ul",
-                                               class_="_image-items autopagerize_page_element")  # 找到20张图片所在的标签，返回的list长度为1
-            imgItemsSoup = BeautifulSoup(str(imgItemsResult), 'lxml')
-            imgItemResult = imgItemsSoup.find_all("li", class_="image-item")  # 找到每张图片所在的标签，返回list长度应为20
-            imgUrlPattern = re.compile('<a href="(.*?)"><h1.*?</h1>', re.S)  # 在该图片所在image-item标签里找到url和收藏数
-            imgStarsPattern = re.compile('<ul class="count-list.*?data-tooltip="(\d*).*?".*?</ul>', re.S)
-            for imgItem in imgItemResult:
-                if (self.resolution == 1):  # 获取原图)
-                    imgUrl = re.search(imgUrlPattern, str(imgItem))
-                    imgStars = re.search(imgStarsPattern, str(imgItem))
-                    if ((not imgStars) or (int(imgStars.group(1)) <= 50)):
-                        os.chdir(self.rootPath + '/1-50')  # 切换到对应目录
-                    elif (int(imgStars.group(1)) <= 300):
-                        os.chdir(self.rootPath + '/51-300')
-                        self.getImg(imgUrl.group(1))
-                    elif (int(imgStars.group(1)) <= 1000):
-                        os.chdir(self.rootPath + '/301-1000')
-                        self.getImg(imgUrl.group(1))
-                    else:
-                        os.chdir(self.rootPath + '/1000+')
-                        self.getImg(imgUrl.group(1))
+        pages = []
+        pool = threadpool.ThreadPool(20)
+        for pageNum in range(self.page, self.end):
+            pages.append(pageNum)
+
+        requests = threadpool.makeRequests(self.getbypage, pages)
+        [pool.putRequest(req) for req in requests]
+        pool.wait()
+        # threads = []
+        # for pageNum in range(self.page, self.end):
+        #     t = threading.Thread(target=self.getbypage, args=(pageNum,))
+        #     t.setDaemon(True)
+        #     threads.append(t)
+        #     t.start()
+        # for t in threads:
+        #     t.join()
+    def getbypage(self, pageNum):
+        url = "https://www.pixiv.net/member_illust.php?id=%s&type=all&p=%d" % (self.tag, pageNum)
+        pageHtml = self.getPageWithUrl(url)  # 获取该页html
+        pageSoup = BeautifulSoup(pageHtml, 'lxml')
+        imgItemsResult = pageSoup.find_all("ul", class_="_image-items")  # 找到20张图片所在的标签，返回的list长度为1
+        imgItemsSoup = BeautifulSoup(str(imgItemsResult), 'lxml')
+        imgItemResult = imgItemsSoup.find_all("li", class_="image-item")  # 找到每张图片所在的标签，返回list长度应为20
+        imgUrlPattern = re.compile('<a href="(.*?)"><h1.*?</h1>', re.S)  # 在该图片所在image-item标签里找到url和收藏数
+        imgStarsPattern = re.compile('<ul class="count-list.*?data-tooltip="(\d*).*?".*?</ul>', re.S)
+        for imgItem in imgItemResult:
+            imgUrl = re.search(imgUrlPattern, str(imgItem))
+            os.chdir(self.rootPath)  # 切换到对应目录
+            self.getImg(imgUrl.group(1))
 
 
 p = Pixiv()
-p.start()  
+p.start()
